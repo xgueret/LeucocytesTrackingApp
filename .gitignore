@@ -1,0 +1,110 @@
+# ============================================
+# GÉNÉRAL
+# ============================================
+
+# Fichiers système
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Environnement
+.env
+.env.local
+.env.*.local
+.venv
+
+# ============================================
+# ÉDITEURS ET IDEs
+# ============================================
+
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# JetBrains (PyCharm, WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ============================================
+# DOCUMENTATION
+# ============================================
+
+# Ignore les docs générés automatiquement (garder les docs manuels)
+# docs/build/
+# docs/.cache/
+
+# ============================================
+# SAUVEGARDES ET TEMPORAIRES
+# ============================================
+
+*.bak
+*.tmp
+*.temp
+*.swp
+*.swo
+*~.nib
+
+# ============================================
+# BASES DE DONNÉES
+# ============================================
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ============================================
+# DOSSIERS DE BUILD ET DISTRIBUTION
+# ============================================
+
+dist/
+build/
+*.egg-info/
+
+# ============================================
+# ARCHIVES
+# ============================================
+
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
