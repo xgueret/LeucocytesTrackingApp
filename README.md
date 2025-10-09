@@ -15,11 +15,34 @@ Web application to track and visualize white blood cell counts over 25 years (19
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.9+
-- Node.js 16+
-- pnpm
+- Docker & Docker Compose (recommended)
+- OR: Python 3.9+ and Node.js 16+ with pnpm (for local development)
 
-### Installation
+### Option 1: Docker (Recommended)
+
+**Run the entire stack:**
+```bash
+docker compose up -d
+```
+
+**Rebuild after changes:**
+```bash
+docker compose down
+docker compose build
+docker compose up -d
+```
+
+**View logs:**
+```bash
+docker compose logs -f
+```
+
+**Stop the stack:**
+```bash
+docker compose down
+```
+
+### Option 2: Local Development
 
 **Backend:**
 ```bash
@@ -35,9 +58,7 @@ cd frontend
 pnpm install
 ```
 
-### Configuration
-
-Create `backend/.env`:
+**Configuration** - Create `backend/.env`:
 ```env
 APP_NAME="API Suivi des Leucocytes"
 APP_VERSION="1.0.0"
@@ -47,16 +68,14 @@ CORS_ORIGINS=["http://localhost:3000", "http://localhost:5173"]
 API_PREFIX="/api"
 ```
 
-### Run
-
-**Terminal 1 - Backend:**
+**Run Backend (Terminal 1):**
 ```bash
 cd backend
 source venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8081
 ```
 
-**Terminal 2 - Frontend:**
+**Run Frontend (Terminal 2):**
 ```bash
 cd frontend
 pnpm dev --host
@@ -74,12 +93,17 @@ pnpm dev --host
 - FastAPI (Python)
 - SQLite
 - Pydantic
+- Uvicorn
 
 **Frontend:**
 - React 18
 - Vite
 - Recharts
 - Tailwind CSS
+
+**Infrastructure:**
+- Docker & Docker Compose
+- Nginx (production frontend serving)
 
 ## 📁 Project Structure
 
@@ -92,14 +116,18 @@ leucocytes-project/
 │   │   ├── routes/
 │   │   ├── services/
 │   │   └── main.py
+│   ├── Dockerfile
 │   ├── requirements.txt
-│   └── .env
-└── frontend/
-    ├── src/
-    │   ├── App.jsx
-    │   └── main.jsx
-    ├── package.json
-    └── vite.config.js
+│   └── .env (local dev only)
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── vite.config.js
+└── docker-compose.yml
 ```
 
 ## 📊 Features
