@@ -1,0 +1,31 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Documentation
+README.md
+docs/
+*.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

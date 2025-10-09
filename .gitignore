@@ -17,11 +17,14 @@ Desktop.ini
 logs/
 *.log.*
 
-# Environnement
-.env
-.env.local
-.env.*.local
-.venv
+
+# Backups
+**/*.backup
+**/*.dump
+
+# Environment files
+**/.env
+**/.env.*
 
 # ============================================
 # ÉDITEURS ET IDEs
@@ -85,11 +88,16 @@ out/
 # BASES DE DONNÉES
 # ============================================
 
-# SQLite
-*.db
-*.sqlite
-*.sqlite3
-*.db-journal
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/data/
+**/leucocytes.db
+**/*.db-journal
+
+# Docker volumes
+*_data/
+*-data/
 
 # ============================================
 # DOSSIERS DE BUILD ET DISTRIBUTION

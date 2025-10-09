@@ -1,8 +1,16 @@
 # 🩺 Leucocytes Tracking App
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?logo=fastapi)![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python)![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?logo=fastapi)![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python)
 
 Web application to track and visualize white blood cell counts over 25 years (1997-2022).
+
+
+
+![](./img/app.png)
+
+
+
+
 
 ## 🚀 Quick Start
 
@@ -114,6 +122,9 @@ DELETE /api/mesures/{year}    # Delete measurement
 GET    /api/mesures/stats/summary  # Statistics
 ```
 
+![](./img/swagger.png)
+
+
+
 ## 📝 License
 
-MIT
