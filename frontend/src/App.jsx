@@ -281,7 +281,7 @@ const LeukocytesApp = () => {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Suivi des leucocytes et formule leucocytaire</h1>
-            <p className="text-gray-600">Période de suivi : 1997 - 2022 (toutes les valeurs en cellules/mm³)</p>
+            <p className="text-gray-600">Période de suivi : 1997 - 2025+ (toutes les valeurs en cellules/mm³)</p>
           </div>
           <button onClick={fetchData} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition flex items-center gap-2" title="Actualiser les données">
             <RefreshCw className="w-5 h-5" />
