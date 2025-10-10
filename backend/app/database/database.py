@@ -37,25 +37,44 @@ class Database:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS mesures (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    annee INTEGER NOT NULL UNIQUE,
+                    annee INTEGER NOT NULL,
+                    mois INTEGER NOT NULL,
                     leucocytes REAL NOT NULL,
                     neutrophiles REAL NOT NULL,
                     eosinophiles REAL NOT NULL,
                     lymphocytes REAL NOT NULL,
-                    date_saisie TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    date_saisie TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(annee, mois)
                 )
             ''')
 
-    def get_all_mesures(self) -> List[Dict]:
-        """Récupère toutes les mesures"""
+    def get_all_mesures(self, annee: int = None, mois: int = None) -> List[Dict]:
+        """Récupère toutes les mesures avec filtres optionnels"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, annee, leucocytes, neutrophiles, eosinophiles, 
+
+            query = """
+                SELECT id, annee, mois, leucocytes, neutrophiles, eosinophiles,
                        lymphocytes, date_saisie
-                FROM mesures 
-                ORDER BY annee
-            """)
+                FROM mesures
+            """
+            params = []
+
+            # Ajouter filtres si fournis
+            conditions = []
+            if annee is not None:
+                conditions.append("annee = ?")
+                params.append(annee)
+            if mois is not None:
+                conditions.append("mois = ?")
+                params.append(mois)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " ORDER BY annee, mois"
+
+            cursor.execute(query, params)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
 
@@ -64,47 +83,53 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, annee, leucocytes, neutrophiles, eosinophiles, 
+                SELECT id, annee, mois, leucocytes, neutrophiles, eosinophiles,
                        lymphocytes, date_saisie
-                FROM mesures 
+                FROM mesures
                 WHERE id = ?
             """, (mesure_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def get_mesure_by_annee(self, annee: int) -> Optional[Dict]:
-        """Récupère une mesure par année"""
+    def get_mesure_by_annee_mois(self, annee: int, mois: int) -> Optional[Dict]:
+        """Récupère une mesure par année et mois"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, annee, leucocytes, neutrophiles, eosinophiles, 
+                SELECT id, annee, mois, leucocytes, neutrophiles, eosinophiles,
                        lymphocytes, date_saisie
-                FROM mesures 
-                WHERE annee = ?
-            """, (annee,))
+                FROM mesures
+                WHERE annee = ? AND mois = ?
+            """, (annee, mois))
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def create_mesure(self, annee: int, leucocytes: float, neutrophiles: float,
+    def create_mesure(self, annee: int, mois: int, leucocytes: float, neutrophiles: float,
                       eosinophiles: float, lymphocytes: float) -> Optional[Dict]:
         """Crée une nouvelle mesure"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO mesures (annee, leucocytes, neutrophiles, eosinophiles, lymphocytes)
-                VALUES (?, ?, ?, ?, ?)
-            """, (annee, leucocytes, neutrophiles, eosinophiles, lymphocytes))
+                INSERT INTO mesures (annee, mois, leucocytes, neutrophiles, eosinophiles, lymphocytes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (annee, mois, leucocytes, neutrophiles, eosinophiles, lymphocytes))
 
-        return self.get_mesure_by_annee(annee)
+        return self.get_mesure_by_annee_mois(annee, mois)
 
-    def update_mesure(self, annee: int, leucocytes: float = None,
-                     neutrophiles: float = None, eosinophiles: float = None,
-                     lymphocytes: float = None) -> Optional[Dict]:
+    def update_mesure(self, mesure_id: int, annee: int = None, mois: int = None,
+                     leucocytes: float = None, neutrophiles: float = None,
+                     eosinophiles: float = None, lymphocytes: float = None) -> Optional[Dict]:
         """Met à jour une mesure existante"""
         # Construire la requête dynamiquement
         updates = []
         params = []
 
+        if annee is not None:
+            updates.append("annee = ?")
+            params.append(annee)
+        if mois is not None:
+            updates.append("mois = ?")
+            params.append(mois)
         if leucocytes is not None:
             updates.append("leucocytes = ?")
             params.append(leucocytes)
@@ -121,8 +146,8 @@ class Database:
         if not updates:
             return None
 
-        params.append(annee)
-        query = f"UPDATE mesures SET {', '.join(updates)} WHERE annee = ?"
+        params.append(mesure_id)
+        query = f"UPDATE mesures SET {', '.join(updates)} WHERE id = ?"
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -130,14 +155,14 @@ class Database:
             rowcount = cursor.rowcount
 
         if rowcount > 0:
-            return self.get_mesure_by_annee(annee)
+            return self.get_mesure_by_id(mesure_id)
         return None
 
-    def delete_mesure(self, annee: int) -> bool:
-        """Supprime une mesure"""
+    def delete_mesure(self, mesure_id: int) -> bool:
+        """Supprime une mesure par ID"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM mesures WHERE annee = ?", (annee,))
+            cursor.execute("DELETE FROM mesures WHERE id = ?", (mesure_id,))
             return cursor.rowcount > 0
 
 
