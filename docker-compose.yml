@@ -10,7 +10,7 @@ services:
       - "8081:8081"
     environment:
       - APP_NAME=API Suivi des Leucocytes
-      - APP_VERSION=1.0.0
+      - APP_VERSION=1.1.0
       - DEBUG=True
       - DATABASE_URL=/app/data/leucocytes.db
       - CORS_ORIGINS=["http://localhost:3000", "http://localhost"]
