@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?logo=fastapi)![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python)
 
-Web application to track and visualize white blood cell counts over 25 years (1997-2022).
+Application web pour suivre et visualiser l'évolution des leucocytes et de la formule leucocytaire avec un suivi mensuel.
 
 
 
@@ -132,22 +132,22 @@ leucocytes-project/
 
 ## 📊 Features
 
-- 📈 3 interactive chart views
-- ➕ Add measurements (year, leukocytes, neutrophils, eosinophils, lymphocytes)
-- 🗑️ Delete measurements
-- 🔄 Real-time data updates
-- 📱 Responsive design
-- 🌐 Network accessible
+- 📈 3 vues graphiques interactives (globules blancs, courbes, empilée)
+- ➕ Saisie mensuelle des mesures (toutes les valeurs en /mm³)
+- 🗑️ Suppression de mesures
+- 🔄 Mise à jour en temps réel
+- 📱 Design responsive
+- 🌐 Accessible en réseau local
 
 ## 🧪 API Endpoints
 
 ```
-GET    /api/mesures           # List all measurements
-POST   /api/mesures           # Create measurement
-GET    /api/mesures/{year}    # Get by year
-PUT    /api/mesures/{year}    # Update measurement
-DELETE /api/mesures/{year}    # Delete measurement
-GET    /api/mesures/stats/summary  # Statistics
+GET    /api/mesures              # Liste toutes les mesures (filtres: ?annee=2024&mois=1)
+POST   /api/mesures              # Créer une mesure
+GET    /api/mesures/{id}         # Récupérer par ID
+PUT    /api/mesures/{id}         # Mettre à jour une mesure
+DELETE /api/mesures/{id}         # Supprimer une mesure
+GET    /api/mesures/stats/summary # Statistiques
 ```
 
 ![](./img/swagger.png)
