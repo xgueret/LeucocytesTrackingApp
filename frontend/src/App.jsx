@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
-import { Plus, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, AlertCircle, Download, FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const API_BASE_URL = '/api';
 
@@ -21,6 +23,7 @@ const LeukocytesApp = () => {
 
   const [showTable, setShowTable] = useState(true);
   const [viewMode, setViewMode] = useState('leucocytes');
+  const contentRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -110,6 +113,113 @@ const LeukocytesApp = () => {
       alert('✅ Mesure supprimée avec succès !');
     } catch (err) {
       alert(`❌ ${err.message}`);
+    }
+  };
+
+  const exportToCSV = () => {
+    if (data.length === 0) {
+      alert('Aucune donnée à exporter');
+      return;
+    }
+
+    // En-têtes CSV
+    const headers = ['Année', 'Mois', 'Leucocytes (/mm³)', 'Neutrophiles (/mm³)', 'Éosinophiles (/mm³)', 'Lymphocytes (/mm³)'];
+
+    // Conversion des données
+    const csvRows = [
+      headers.join(','),
+      ...data.map(entry => [
+        entry.annee,
+        entry.mois,
+        entry.leucocytes,
+        entry.neutrophiles,
+        entry.eosinophiles,
+        entry.lymphocytes
+      ].join(','))
+    ];
+
+    // Création du fichier
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // \ufeff pour BOM UTF-8
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `leucocytes_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = () => {
+    if (data.length === 0) {
+      alert('Aucune donnée à exporter');
+      return;
+    }
+
+    // Créer le contenu Excel au format TSV (compatible Excel)
+    const headers = ['Année', 'Mois', 'Leucocytes (/mm³)', 'Neutrophiles (/mm³)', 'Éosinophiles (/mm³)', 'Lymphocytes (/mm³)'];
+
+    const rows = [
+      headers.join('\t'),
+      ...data.map(entry => [
+        entry.annee,
+        entry.mois,
+        entry.leucocytes,
+        entry.neutrophiles,
+        entry.eosinophiles,
+        entry.lymphocytes
+      ].join('\t'))
+    ];
+
+    const content = rows.join('\n');
+    const blob = new Blob(['\ufeff' + content], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `leucocytes_export_${new Date().toISOString().split('T')[0]}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = async () => {
+    if (data.length === 0) {
+      alert('Aucune donnée à exporter');
+      return;
+    }
+
+    try {
+      // Masquer temporairement le tableau de saisie pour une meilleure vue
+      const originalShowTable = showTable;
+      setShowTable(false);
+
+      // Attendre que le DOM se mette à jour
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const element = contentRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#f0f4f8'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`leucocytes_rapport_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      // Restaurer l'état du tableau
+      setShowTable(originalShowTable);
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération du PDF');
     }
   };
 
@@ -277,16 +387,30 @@ const LeukocytesApp = () => {
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-6">
+      <div ref={contentRef} className="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-6">
         <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Suivi des leucocytes et formule leucocytaire</h1>
             <p className="text-gray-600">Période de suivi : 1997 - 2025+ (toutes les valeurs en cellules/mm³)</p>
           </div>
-          <button onClick={fetchData} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition flex items-center gap-2" title="Actualiser les données">
-            <RefreshCw className="w-5 h-5" />
-            Actualiser
-          </button>
+          <div className="flex gap-2">
+            <button onClick={fetchData} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition flex items-center gap-2" title="Actualiser les données">
+              <RefreshCw className="w-5 h-5" />
+              Actualiser
+            </button>
+            <button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Exporter en CSV">
+              <Download className="w-5 h-5" />
+              CSV
+            </button>
+            <button onClick={exportToExcel} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Exporter en Excel">
+              <Download className="w-5 h-5" />
+              Excel
+            </button>
+            <button onClick={exportToPDF} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Exporter en PDF">
+              <FileText className="w-5 h-5" />
+              PDF
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 flex gap-3 flex-wrap">
