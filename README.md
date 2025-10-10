@@ -154,5 +154,9 @@ GET    /api/mesures/stats/summary # Statistiques
 
 
 
+## 🤖 Développement assisté
+
+Ce projet a été développé avec l'assistance de [Claude Code](https://claude.com/claude-code), l'assistant IA d'Anthropic pour le développement logiciel.
+
 ## 📝 License
 
