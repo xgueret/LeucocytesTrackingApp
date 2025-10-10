@@ -16,31 +16,35 @@ router = APIRouter(
 
 
 @router.get("", response_model=List[MesureResponse])
-async def get_mesures():
+async def get_mesures(annee: int = None, mois: int = None):
     """
-    Récupère toutes les mesures de leucocytes
-    
-    Returns:
-        Liste de toutes les mesures triées par année
-    """
-    return mesure_service.get_all_mesures()
+    Récupère toutes les mesures de leucocytes avec filtres optionnels
 
-
-@router.get("/{annee}", response_model=MesureResponse)
-async def get_mesure(annee: int):
-    """
-    Récupère une mesure par année
-    
     Args:
-        annee: Année de la mesure (1997-2022)
-    
+        annee: Filtrer par année (optionnel)
+        mois: Filtrer par mois 1-12 (optionnel)
+
+    Returns:
+        Liste de toutes les mesures triées par année et mois
+    """
+    return mesure_service.get_all_mesures(annee=annee, mois=mois)
+
+
+@router.get("/{mesure_id}", response_model=MesureResponse)
+async def get_mesure(mesure_id: int):
+    """
+    Récupère une mesure par ID
+
+    Args:
+        mesure_id: ID de la mesure
+
     Returns:
         Mesure correspondante
-    
+
     Raises:
         404: Mesure non trouvée
     """
-    return mesure_service.get_mesure_by_annee(annee)
+    return mesure_service.get_mesure_by_id(mesure_id)
 
 
 @router.post("", response_model=MesureResponse, status_code=status.HTTP_201_CREATED)
@@ -60,36 +64,36 @@ async def create_mesure(mesure: MesureCreate):
     return mesure_service.create_mesure(mesure)
 
 
-@router.put("/{annee}", response_model=MesureResponse)
-async def update_mesure(annee: int, mesure: MesureUpdate):
+@router.put("/{mesure_id}", response_model=MesureResponse)
+async def update_mesure(mesure_id: int, mesure: MesureUpdate):
     """
     Met à jour une mesure existante
-    
+
     Args:
-        annee: Année de la mesure à modifier
+        mesure_id: ID de la mesure à modifier
         mesure: Nouvelles données (seuls les champs fournis seront mis à jour)
-        
+
     Returns:
         Mesure mise à jour
-        
+
     Raises:
         404: Mesure non trouvée
     """
-    return mesure_service.update_mesure(annee, mesure)
+    return mesure_service.update_mesure(mesure_id, mesure)
 
 
-@router.delete("/{annee}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_mesure(annee: int):
+@router.delete("/{mesure_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_mesure(mesure_id: int):
     """
     Supprime une mesure
-    
+
     Args:
-        annee: Année de la mesure à supprimer
-        
+        mesure_id: ID de la mesure à supprimer
+
     Raises:
         404: Mesure non trouvée
     """
-    mesure_service.delete_mesure(annee)
+    mesure_service.delete_mesure(mesure_id)
     return None
 
 

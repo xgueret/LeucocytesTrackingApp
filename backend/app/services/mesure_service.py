@@ -15,13 +15,15 @@ class MesureService:
     """Service pour gérer les mesures de leucocytes"""
 
     @staticmethod
-    def get_all_mesures() -> List[MesureResponse]:
-        """Récupère toutes les mesures"""
-        mesures = db.get_all_mesures()
+    def get_all_mesures(annee: int = None, mois: int = None) -> List[MesureResponse]:
+        """Récupère toutes les mesures avec filtres optionnels"""
+        mesures = db.get_all_mesures(annee=annee, mois=mois)
 
         return [
             MesureResponse(
+                id=m["id"],
                 annee=m["annee"],
+                mois=m["mois"],
                 leucocytes=m["leucocytes"],
                 neutrophiles=m["neutrophiles"],
                 eosinophiles=m["eosinophiles"],
@@ -31,18 +33,20 @@ class MesureService:
         ]
 
     @staticmethod
-    def get_mesure_by_annee(annee: int) -> MesureResponse:
-        """Récupère une mesure par année"""
-        mesure = db.get_mesure_by_annee(annee)
+    def get_mesure_by_id(mesure_id: int) -> MesureResponse:
+        """Récupère une mesure par ID"""
+        mesure = db.get_mesure_by_id(mesure_id)
 
         if not mesure:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Aucune mesure trouvée pour l'année {annee}"
+                detail=f"Aucune mesure trouvée avec l'ID {mesure_id}"
             )
 
         return MesureResponse(
+            id=mesure["id"],
             annee=mesure["annee"],
+            mois=mesure["mois"],
             leucocytes=mesure["leucocytes"],
             neutrophiles=mesure["neutrophiles"],
             eosinophiles=mesure["eosinophiles"],
@@ -52,13 +56,11 @@ class MesureService:
     @staticmethod
     def create_mesure(mesure_data: MesureCreate) -> MesureResponse:
         """Crée une nouvelle mesure"""
-        # Convertir leucocytes de K/mm³ en /mm³
-        leucocytes_converti = mesure_data.leucocytes * 1000
-
         try:
             mesure = db.create_mesure(
                 annee=mesure_data.annee,
-                leucocytes=leucocytes_converti,
+                mois=mesure_data.mois,
+                leucocytes=mesure_data.leucocytes,
                 neutrophiles=mesure_data.neutrophiles,
                 eosinophiles=mesure_data.eosinophiles,
                 lymphocytes=mesure_data.lymphocytes
@@ -71,7 +73,9 @@ class MesureService:
                 )
 
             return MesureResponse(
+                id=mesure["id"],
                 annee=mesure["annee"],
+                mois=mesure["mois"],
                 leucocytes=mesure["leucocytes"],
                 neutrophiles=mesure["neutrophiles"],
                 eosinophiles=mesure["eosinophiles"],
@@ -80,20 +84,17 @@ class MesureService:
         except sqlite3.IntegrityError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Une mesure existe déjà pour l'année {mesure_data.annee}"
+                detail=f"Une mesure existe déjà pour {mesure_data.annee}/{mesure_data.mois:02d}"
             )
 
     @staticmethod
-    def update_mesure(annee: int, mesure_data: MesureUpdate) -> MesureResponse:
+    def update_mesure(mesure_id: int, mesure_data: MesureUpdate) -> MesureResponse:
         """Met à jour une mesure existante"""
-        # Convertir leucocytes si fourni
-        leucocytes_converti = None
-        if mesure_data.leucocytes is not None:
-            leucocytes_converti = mesure_data.leucocytes * 1000
-
         mesure = db.update_mesure(
-            annee=annee,
-            leucocytes=leucocytes_converti,
+            mesure_id=mesure_id,
+            annee=mesure_data.annee,
+            mois=mesure_data.mois,
+            leucocytes=mesure_data.leucocytes,
             neutrophiles=mesure_data.neutrophiles,
             eosinophiles=mesure_data.eosinophiles,
             lymphocytes=mesure_data.lymphocytes
@@ -102,11 +103,13 @@ class MesureService:
         if not mesure:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Aucune mesure trouvée pour l'année {annee}"
+                detail=f"Aucune mesure trouvée avec l'ID {mesure_id}"
             )
 
         return MesureResponse(
+            id=mesure["id"],
             annee=mesure["annee"],
+            mois=mesure["mois"],
             leucocytes=mesure["leucocytes"],
             neutrophiles=mesure["neutrophiles"],
             eosinophiles=mesure["eosinophiles"],
@@ -114,14 +117,14 @@ class MesureService:
         )
 
     @staticmethod
-    def delete_mesure(annee: int) -> None:
+    def delete_mesure(mesure_id: int) -> None:
         """Supprime une mesure"""
-        success = db.delete_mesure(annee)
+        success = db.delete_mesure(mesure_id)
 
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Aucune mesure trouvée pour l'année {annee}"
+                detail=f"Aucune mesure trouvée avec l'ID {mesure_id}"
             )
 
     @staticmethod

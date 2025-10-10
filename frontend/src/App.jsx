@@ -12,6 +12,7 @@ const LeukocytesApp = () => {
   
   const [newEntry, setNewEntry] = useState({
     annee: '',
+    mois: '',
     leucocytes: '',
     neutrophiles: '',
     eosinophiles: '',
@@ -44,8 +45,8 @@ const LeukocytesApp = () => {
   };
 
   const addEntry = async () => {
-    if (!newEntry.annee || !newEntry.leucocytes) {
-      alert('Veuillez remplir au moins l\'année et les leucocytes');
+    if (!newEntry.annee || !newEntry.mois || !newEntry.leucocytes) {
+      alert('Veuillez remplir au moins l\'année, le mois et les leucocytes');
       return;
     }
 
@@ -58,6 +59,7 @@ const LeukocytesApp = () => {
         },
         body: JSON.stringify({
           annee: parseInt(newEntry.annee),
+          mois: parseInt(newEntry.mois),
           leucocytes: parseFloat(newEntry.leucocytes),
           neutrophiles: parseFloat(newEntry.neutrophiles) || 0,
           eosinophiles: parseFloat(newEntry.eosinophiles) || 0,
@@ -71,15 +73,16 @@ const LeukocytesApp = () => {
       }
 
       await fetchData();
-      
+
       setNewEntry({
         annee: '',
+        mois: '',
         leucocytes: '',
         neutrophiles: '',
         eosinophiles: '',
         lymphocytes: ''
       });
-      
+
       alert('✅ Mesure ajoutée avec succès !');
     } catch (err) {
       alert(`❌ ${err.message}`);
@@ -88,13 +91,14 @@ const LeukocytesApp = () => {
     }
   };
 
-  const deleteEntry = async (annee) => {
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la mesure de ${annee} ?`)) {
+  const deleteEntry = async (id, annee, mois) => {
+    const moisNom = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][mois - 1];
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la mesure de ${moisNom} ${annee} ?`)) {
       return;
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/mesures/${annee}`, {
+      const response = await fetch(`${API_BASE_URL}/mesures/${id}`, {
         method: 'DELETE',
       });
 
@@ -111,9 +115,10 @@ const LeukocytesApp = () => {
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
+      const moisNom = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][payload[0].payload.mois - 1];
       return (
         <div className="bg-white p-4 border-2 border-gray-300 rounded-lg shadow-xl">
-          <p className="font-bold text-lg mb-2">{`Année: ${payload[0].payload.annee}`}</p>
+          <p className="font-bold text-lg mb-2">{`${moisNom} ${payload[0].payload.annee}`}</p>
           {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }} className="text-sm font-semibold">
               {`${entry.name}: ${entry.value.toLocaleString()} /mm³`}
@@ -125,9 +130,15 @@ const LeukocytesApp = () => {
     return null;
   };
 
-  const renderLeucocytesChart = () => (
+  const renderLeucocytesChart = () => {
+    const chartData = data.map(d => ({
+      ...d,
+      dateLabel: `${d.mois}/${d.annee}`
+    }));
+
+    return (
     <ResponsiveContainer width="100%" height={600}>
-      <AreaChart data={data} margin={{ top: 5, right: 30, left: 60, bottom: 60 }}>
+      <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 60, bottom: 60 }}>
         <defs>
           <linearGradient id="colorLeuco" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
@@ -135,11 +146,11 @@ const LeukocytesApp = () => {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-        <XAxis 
-          dataKey="annee" 
-          label={{ value: 'Année', position: 'insideBottom', offset: -5 }}
+        <XAxis
+          dataKey="dateLabel"
+          label={{ value: 'Date (mois/année)', position: 'insideBottom', offset: -5 }}
           stroke="#666"
-          style={{ fontSize: '14px', fontWeight: 'bold' }}
+          style={{ fontSize: '12px', fontWeight: 'bold' }}
           angle={-45}
           textAnchor="end"
           height={80}
@@ -168,16 +179,24 @@ const LeukocytesApp = () => {
         />
       </AreaChart>
     </ResponsiveContainer>
-  );
+    );
+  };
 
-  const renderLinesChart = () => (
+  const renderLinesChart = () => {
+    const chartData = data.map(d => ({
+      ...d,
+      dateLabel: `${d.mois}/${d.annee}`
+    }));
+
+    return (
     <ResponsiveContainer width="100%" height={600}>
-      <LineChart data={data} margin={{ top: 5, right: 30, left: 60, bottom: 60 }}>
+      <LineChart data={chartData} margin={{ top: 5, right: 30, left: 60, bottom: 60 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-        <XAxis 
-          dataKey="annee" 
-          label={{ value: 'Année', position: 'insideBottom', offset: -5 }}
+        <XAxis
+          dataKey="dateLabel"
+          label={{ value: 'Date (mois/année)', position: 'insideBottom', offset: -5 }}
           stroke="#666"
+          style={{ fontSize: '12px' }}
           angle={-45}
           textAnchor="end"
           height={80}
@@ -200,13 +219,20 @@ const LeukocytesApp = () => {
         <Line type="monotone" dataKey="eosinophiles" stroke="#f59e0b" strokeWidth={3} dot={{ fill: '#f59e0b', r: 4 }} name="Éosinophiles" />
       </LineChart>
     </ResponsiveContainer>
-  );
+    );
+  };
 
-  const renderStackedChart = () => (
+  const renderStackedChart = () => {
+    const chartData = data.map(d => ({
+      ...d,
+      dateLabel: `${d.mois}/${d.annee}`
+    }));
+
+    return (
     <ResponsiveContainer width="100%" height={600}>
-      <AreaChart data={data} margin={{ top: 5, right: 30, left: 60, bottom: 60 }}>
+      <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 60, bottom: 60 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-        <XAxis dataKey="annee" stroke="#666" angle={-45} textAnchor="end" height={80} />
+        <XAxis dataKey="dateLabel" stroke="#666" style={{ fontSize: '12px' }} angle={-45} textAnchor="end" height={80} />
         <YAxis domain={[0, 12000]} stroke="#666" tickFormatter={(value) => value.toLocaleString()} />
         <Tooltip content={<CustomTooltip />} />
         <Legend wrapperStyle={{ paddingTop: '20px' }} />
@@ -218,7 +244,8 @@ const LeukocytesApp = () => {
         <Line type="monotone" dataKey="leucocytes" stroke="#3b82f6" strokeWidth={4} dot={{ fill: '#3b82f6', r: 5 }} name="Leucocytes totaux" />
       </AreaChart>
     </ResponsiveContainer>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -314,16 +341,34 @@ const LeukocytesApp = () => {
         {showTable && (
           <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Saisir vos données</h2>
-            <p className="text-sm text-gray-600 mb-4">💡 <strong>Note:</strong> Entrez les leucocytes en K/mm³ (ex: 7.5)</p>
+            <p className="text-sm text-gray-600 mb-4">💡 <strong>Note:</strong> Toutes les valeurs sont en cellules/mm³ (ex: 7500 pour les leucocytes)</p>
             
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-semibold mb-1 text-gray-700">Année</label>
-                <input type="number" placeholder="2024" value={newEntry.annee} onChange={(e) => setNewEntry({...newEntry, annee: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1997" max="2022" />
+                <input type="number" placeholder="2025" value={newEntry.annee} onChange={(e) => setNewEntry({...newEntry, annee: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1997" max="2100" />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Leucocytes (K/mm³)</label>
-                <input type="number" step="0.1" placeholder="7.5" value={newEntry.leucocytes} onChange={(e) => setNewEntry({...newEntry, leucocytes: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label className="block text-xs font-semibold mb-1 text-gray-700">Mois</label>
+                <select value={newEntry.mois} onChange={(e) => setNewEntry({...newEntry, mois: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">--</option>
+                  <option value="1">Janvier</option>
+                  <option value="2">Février</option>
+                  <option value="3">Mars</option>
+                  <option value="4">Avril</option>
+                  <option value="5">Mai</option>
+                  <option value="6">Juin</option>
+                  <option value="7">Juillet</option>
+                  <option value="8">Août</option>
+                  <option value="9">Septembre</option>
+                  <option value="10">Octobre</option>
+                  <option value="11">Novembre</option>
+                  <option value="12">Décembre</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 text-gray-700">Leucocytes (/mm³)</label>
+                <input type="number" placeholder="7500" value={newEntry.leucocytes} onChange={(e) => setNewEntry({...newEntry, leucocytes: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1 text-gray-700">Neutrophiles (/mm³)</label>
@@ -348,7 +393,7 @@ const LeukocytesApp = () => {
                 <table className="w-full text-sm border-collapse">
                   <thead className="bg-indigo-600 text-white">
                     <tr>
-                      <th className="px-4 py-3 text-left">Année</th>
+                      <th className="px-4 py-3 text-left">Date</th>
                       <th className="px-4 py-3 text-left">Leucocytes</th>
                       <th className="px-4 py-3 text-left">Neutrophiles</th>
                       <th className="px-4 py-3 text-left">Éosinophiles</th>
@@ -357,20 +402,23 @@ const LeukocytesApp = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.map((entry, index) => (
-                      <tr key={index} className="border-b hover:bg-indigo-50 transition">
-                        <td className="px-4 py-3 font-semibold">{entry.annee}</td>
+                    {data.map((entry, index) => {
+                      const moisNom = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][entry.mois - 1];
+                      return (
+                      <tr key={entry.id} className="border-b hover:bg-indigo-50 transition">
+                        <td className="px-4 py-3 font-semibold">{moisNom} {entry.annee}</td>
                         <td className="px-4 py-3">{entry.leucocytes.toLocaleString()}</td>
                         <td className="px-4 py-3">{entry.neutrophiles.toLocaleString()}</td>
                         <td className="px-4 py-3">{entry.eosinophiles.toLocaleString()}</td>
                         <td className="px-4 py-3">{entry.lymphocytes.toLocaleString()}</td>
                         <td className="px-4 py-3 text-center">
-                          <button onClick={() => deleteEntry(entry.annee)} className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition">
+                          <button onClick={() => deleteEntry(entry.id, entry.annee, entry.mois)} className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition">
                             <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
