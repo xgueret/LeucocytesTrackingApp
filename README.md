@@ -1,12 +1,8 @@
 # 🩺 Leucocytes Tracking App
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?logo=fastapi)![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js)![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript)![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express)
 
 Application web pour suivre et visualiser l'évolution des leucocytes et de la formule leucocytaire avec un suivi mensuel.
-
-
-
-![](./img/app.png)
 
 
 
@@ -16,7 +12,7 @@ Application web pour suivre et visualiser l'évolution des leucocytes et de la f
 
 ### Prerequisites
 - Docker & Docker Compose (recommended)
-- OR: Python 3.9+ and Node.js 16+ with pnpm (for local development)
+- OR: Node.js 18+ with npm/pnpm (for local development)
 
 ### Option 1: Docker (Recommended)
 
@@ -47,9 +43,7 @@ docker compose down
 **Backend:**
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+npm install
 ```
 
 **Frontend:**
@@ -60,19 +54,16 @@ pnpm install
 
 **Configuration** - Create `backend/.env`:
 ```env
-APP_NAME="API Suivi des Leucocytes"
-APP_VERSION="1.0.0"
-DEBUG=True
+PORT=8081
 DATABASE_URL="leucocytes.db"
-CORS_ORIGINS=["http://localhost:3000", "http://localhost:5173"]
-API_PREFIX="/api"
+CORS_ORIGINS="http://localhost:3000,http://localhost:5173"
+NODE_ENV=development
 ```
 
 **Run Backend (Terminal 1):**
 ```bash
 cd backend
-source venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8081
+npm run dev
 ```
 
 **Run Frontend (Terminal 2):**
@@ -90,16 +81,18 @@ pnpm dev --host
 ## 🛠️ Tech Stack
 
 **Backend:**
-- FastAPI (Python)
-- SQLite
-- Pydantic
-- Uvicorn
+- Node.js 18+ with TypeScript
+- Express.js
+- SQLite (better-sqlite3)
+- Zod (validation)
+- Swagger UI
 
 **Frontend:**
 - React 18
 - Vite
 - Recharts
 - Tailwind CSS
+- jsPDF & html2canvas (export PDF)
 
 **Infrastructure:**
 - Docker & Docker Compose
@@ -110,14 +103,15 @@ pnpm dev --host
 ```
 leucocytes-project/
 ├── backend/
-│   ├── app/
+│   ├── src/
 │   │   ├── database/
 │   │   ├── models/
 │   │   ├── routes/
 │   │   ├── services/
-│   │   └── main.py
+│   │   └── index.ts
 │   ├── Dockerfile
-│   ├── requirements.txt
+│   ├── package.json
+│   ├── tsconfig.json
 │   └── .env (local dev only)
 ├── frontend/
 │   ├── src/
@@ -127,6 +121,7 @@ leucocytes-project/
 │   ├── nginx.conf
 │   ├── package.json
 │   └── vite.config.js
+├── python-backup/ (archived Python code)
 └── docker-compose.yml
 ```
 
@@ -135,6 +130,7 @@ leucocytes-project/
 - 📈 3 vues graphiques interactives (globules blancs, courbes, empilée)
 - ➕ Saisie mensuelle des mesures (toutes les valeurs en /mm³)
 - 🗑️ Suppression de mesures
+- 📥 Export multi-format (CSV, Excel, PDF)
 - 🔄 Mise à jour en temps réel
 - 📱 Design responsive
 - 🌐 Accessible en réseau local
@@ -150,7 +146,7 @@ DELETE /api/mesures/{id}         # Supprimer une mesure
 GET    /api/mesures/stats/summary # Statistiques
 ```
 
-![](./img/swagger.png)
+Documentation Swagger disponible sur `/docs`
 
 
 
