@@ -1,0 +1,33 @@
+{
+  "name": "leucocytes-backend",
+  "version": "1.0.0",
+  "description": "API Node.js pour le suivi des leucocytes",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": ["leucocytes", "api", "health", "tracking"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "swagger-ui-express": "^5.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.20",
+    "@types/swagger-ui-express": "^4.1.6",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.1"
+  }
+}
