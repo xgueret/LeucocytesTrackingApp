@@ -1,44 +1,48 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+.npm
 
-# Virtual environment
-venv/
-env/
-ENV/
-.venv/
+# Build
+dist
 
-# Environment files
+# Environment
 .env
-.env.*
+.env.local
+.env.*.local
 
-# Database (will be in volume)
-*.db
-*.sqlite
-*.sqlite3
+# Python backup (ancien code)
+python-backup
+
+# Git
+.git
+.gitignore
 
 # IDE
-.vscode/
-.idea/
+.vscode
+.idea
 *.swp
 *.swo
-
-# Tests
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Logs
-*.log
-logs/
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Git
-.git/
-.gitignore
+# Logs
+*.log
+logs
+
+# Test
+coverage
+.nyc_output
+
+# Documentation locale
+README.md
+
+# Fichiers temporaires
+*.tmp
+*.temp
+tmp/
+temp/
