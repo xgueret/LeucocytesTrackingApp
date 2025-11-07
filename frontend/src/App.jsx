@@ -1,29 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
-import { Plus, Trash2, RefreshCw, AlertCircle, Download, FileText } from 'lucide-react';
+import { RefreshCw, AlertCircle, LogOut, Settings, FileText, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './components/Login';
+import AdminPage from './pages/AdminPage';
+import SharedDashboard from './pages/SharedDashboard';
+import { fetchWithAuth } from './utils/api';
 
 const API_BASE_URL = '/api';
 
 const LeukocytesApp = () => {
+  const { logout, username } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  
-  const [newEntry, setNewEntry] = useState({
-    annee: '',
-    mois: '',
-    leucocytes: '',
-    neutrophiles: '',
-    eosinophiles: '',
-    lymphocytes: ''
-  });
-
-  const [showTable, setShowTable] = useState(true);
   const [viewMode, setViewMode] = useState('leucocytes');
-  const contentRef = useRef(null);
+  const [exportingPDF, setExportingPDF] = useState(false);
+
+  // État pour la pagination du tableau
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // État pour afficher/masquer le tableau
+  const [showTable, setShowTable] = useState(false);
+
+  // Refs pour capturer les graphiques
+  const leucocytesChartRef = useRef(null);
+  const linesChartRef = useRef(null);
+  const stackedChartRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -33,7 +41,7 @@ const LeukocytesApp = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/mesures`);
+      const response = await fetchWithAuth(`${API_BASE_URL}/mesures`);
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des données');
       }
@@ -47,179 +55,94 @@ const LeukocytesApp = () => {
     }
   };
 
-  const addEntry = async () => {
-    if (!newEntry.annee || !newEntry.mois || !newEntry.leucocytes) {
-      alert('Veuillez remplir au moins l\'année, le mois et les leucocytes');
+  // Fonction d'export PDF du graphique actuel
+  const exportGraphsToPDF = async () => {
+    if (data.length === 0) {
+      alert('Aucune donnée à exporter');
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/mesures`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          annee: parseInt(newEntry.annee),
-          mois: parseInt(newEntry.mois),
-          leucocytes: parseFloat(newEntry.leucocytes),
-          neutrophiles: parseFloat(newEntry.neutrophiles) || 0,
-          eosinophiles: parseFloat(newEntry.eosinophiles) || 0,
-          lymphocytes: parseFloat(newEntry.lymphocytes) || 0,
-        }),
-      });
+    setExportingPDF(true);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erreur lors de l\'ajout');
+    try {
+      const pdf = new jsPDF('l', 'mm', 'a4'); // Format paysage
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Déterminer le graphique actuel et son ref
+      let chartRef, chartTitle, fileName;
+
+      switch(viewMode) {
+        case 'leucocytes':
+          chartRef = leucocytesChartRef;
+          chartTitle = 'Vue Globules Blancs';
+          fileName = 'leucocytes_globules_blancs';
+          break;
+        case 'lines':
+          chartRef = linesChartRef;
+          chartTitle = 'Vue Courbes';
+          fileName = 'leucocytes_courbes';
+          break;
+        case 'stacked':
+          chartRef = stackedChartRef;
+          chartTitle = 'Vue Empilée';
+          fileName = 'leucocytes_empilee';
+          break;
+        default:
+          chartRef = leucocytesChartRef;
+          chartTitle = 'Vue Globules Blancs';
+          fileName = 'leucocytes_globules_blancs';
       }
 
-      await fetchData();
-
-      setNewEntry({
-        annee: '',
-        mois: '',
-        leucocytes: '',
-        neutrophiles: '',
-        eosinophiles: '',
-        lymphocytes: ''
-      });
-
-      alert('✅ Mesure ajoutée avec succès !');
-    } catch (err) {
-      alert(`❌ ${err.message}`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const deleteEntry = async (id, annee, mois) => {
-    const moisNom = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][mois - 1];
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la mesure de ${moisNom} ${annee} ?`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/mesures/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la suppression');
-      }
-
-      await fetchData();
-      alert('✅ Mesure supprimée avec succès !');
-    } catch (err) {
-      alert(`❌ ${err.message}`);
-    }
-  };
-
-  const exportToCSV = () => {
-    if (data.length === 0) {
-      alert('Aucune donnée à exporter');
-      return;
-    }
-
-    // En-têtes CSV
-    const headers = ['Année', 'Mois', 'Leucocytes (/mm³)', 'Neutrophiles (/mm³)', 'Éosinophiles (/mm³)', 'Lymphocytes (/mm³)'];
-
-    // Conversion des données
-    const csvRows = [
-      headers.join(','),
-      ...data.map(entry => [
-        entry.annee,
-        entry.mois,
-        entry.leucocytes,
-        entry.neutrophiles,
-        entry.eosinophiles,
-        entry.lymphocytes
-      ].join(','))
-    ];
-
-    // Création du fichier
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // \ufeff pour BOM UTF-8
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `leucocytes_export_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportToExcel = () => {
-    if (data.length === 0) {
-      alert('Aucune donnée à exporter');
-      return;
-    }
-
-    // Créer le contenu Excel au format TSV (compatible Excel)
-    const headers = ['Année', 'Mois', 'Leucocytes (/mm³)', 'Neutrophiles (/mm³)', 'Éosinophiles (/mm³)', 'Lymphocytes (/mm³)'];
-
-    const rows = [
-      headers.join('\t'),
-      ...data.map(entry => [
-        entry.annee,
-        entry.mois,
-        entry.leucocytes,
-        entry.neutrophiles,
-        entry.eosinophiles,
-        entry.lymphocytes
-      ].join('\t'))
-    ];
-
-    const content = rows.join('\n');
-    const blob = new Blob(['\ufeff' + content], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `leucocytes_export_${new Date().toISOString().split('T')[0]}.xls`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportToPDF = async () => {
-    if (data.length === 0) {
-      alert('Aucune donnée à exporter');
-      return;
-    }
-
-    try {
-      // Masquer temporairement le tableau de saisie pour une meilleure vue
-      const originalShowTable = showTable;
-      setShowTable(false);
-
-      // Attendre que le DOM se mette à jour
+      // Attendre que le DOM se stabilise
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const element = contentRef.current;
-      const canvas = await html2canvas(element, {
+      // Capturer le graphique actuel
+      if (!chartRef.current) {
+        alert('❌ Impossible de capturer le graphique');
+        return;
+      }
+
+      const canvas = await html2canvas(chartRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#f0f4f8'
+        backgroundColor: '#ffffff'
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 10;
 
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-      pdf.save(`leucocytes_rapport_${new Date().toISOString().split('T')[0]}.pdf`);
+      // Titre de la page
+      pdf.setFontSize(16);
+      pdf.text(chartTitle, 14, 15);
 
-      // Restaurer l'état du tableau
-      setShowTable(originalShowTable);
+      // Date et nombre de mesures
+      pdf.setFontSize(10);
+      pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} - ${data.length} mesures`, 14, 22);
+
+      // Calculer les dimensions pour centrer l'image
+      const ratio = Math.min(
+        (pdfWidth - 28) / canvas.width,
+        (pdfHeight - 40) / canvas.height
+      );
+
+      const imgWidth = canvas.width * ratio;
+      const imgHeight = canvas.height * ratio;
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = 30;
+
+      // Ajouter l'image
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+
+      // Sauvegarder le PDF avec le nom approprié
+      pdf.save(`${fileName}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      alert('✅ Export PDF réussi !');
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
-      alert('Erreur lors de la génération du PDF');
+      alert('❌ Erreur lors de la génération du PDF');
+    } finally {
+      setExportingPDF(false);
     }
   };
 
@@ -387,55 +310,93 @@ const LeukocytesApp = () => {
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8">
-      <div ref={contentRef} className="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-6">
+      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-2xl p-6">
         <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Suivi des leucocytes et formule leucocytaire</h1>
             <p className="text-gray-600">Période de suivi : 1997 - 2025+ (toutes les valeurs en cellules/mm³)</p>
+            <p className="text-sm text-indigo-600 font-semibold mt-1">Connecté en tant que : {username}</p>
           </div>
           <div className="flex gap-2">
             <button onClick={fetchData} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition flex items-center gap-2" title="Actualiser les données">
               <RefreshCw className="w-5 h-5" />
               Actualiser
             </button>
-            <button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Exporter en CSV">
-              <Download className="w-5 h-5" />
-              CSV
+            <button
+              onClick={exportGraphsToPDF}
+              disabled={exportingPDF || data.length === 0}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium whitespace-nowrap"
+              title="Exporter le graphique actuel en PDF"
+            >
+              {exportingPDF ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin flex-shrink-0" />
+                  <span>Export...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5 flex-shrink-0" />
+                  <span>Export PDF</span>
+                </>
+              )}
             </button>
-            <button onClick={exportToExcel} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Exporter en Excel">
-              <Download className="w-5 h-5" />
-              Excel
+            <button onClick={() => navigate('/admin')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Administration">
+              <Settings className="w-5 h-5" />
+              Administration
             </button>
-            <button onClick={exportToPDF} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Exporter en PDF">
-              <FileText className="w-5 h-5" />
-              PDF
+            <button onClick={logout} className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition flex items-center gap-2" title="Se déconnecter">
+              <LogOut className="w-5 h-5" />
+              Déconnexion
             </button>
           </div>
         </div>
 
-        <div className="mb-4 flex gap-3 flex-wrap">
-          <button onClick={() => setViewMode('leucocytes')} className={`px-4 py-2 rounded-lg transition font-semibold ${viewMode === 'leucocytes' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-            Vue Globules Blancs
-          </button>
-          <button onClick={() => setViewMode('lines')} className={`px-4 py-2 rounded-lg transition ${viewMode === 'lines' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-            Vue Courbes
-          </button>
-          <button onClick={() => setViewMode('stacked')} className={`px-4 py-2 rounded-lg transition ${viewMode === 'stacked' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-            Vue Empilée
-          </button>
+        <div className="mb-4 flex gap-3 flex-wrap items-center justify-between">
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={() => setViewMode('leucocytes')} className={`px-4 py-2 rounded-lg transition font-semibold ${viewMode === 'leucocytes' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+              Vue Globules Blancs
+            </button>
+            <button onClick={() => setViewMode('lines')} className={`px-4 py-2 rounded-lg transition ${viewMode === 'lines' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+              Vue Courbes
+            </button>
+            <button onClick={() => setViewMode('stacked')} className={`px-4 py-2 rounded-lg transition ${viewMode === 'stacked' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+              Vue Empilée
+            </button>
+          </div>
+
+          {data.length > 0 && (
+            <button
+              onClick={() => setShowTable(!showTable)}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg transition font-semibold flex items-center gap-2"
+            >
+              {showTable ? '📊 Masquer le tableau' : '📋 Afficher le tableau'}
+            </button>
+          )}
         </div>
 
         <div className="mb-8">
           {data.length === 0 ? (
             <div className="text-center py-16 bg-gray-50 rounded-lg">
               <p className="text-xl text-gray-600">Aucune donnée disponible</p>
-              <p className="text-gray-500 mt-2">Ajoutez votre première mesure ci-dessous</p>
+              <p className="text-gray-500 mt-2">Accédez au mode Administration pour importer des données</p>
             </div>
           ) : (
             <>
-              {viewMode === 'leucocytes' && renderLeucocytesChart()}
-              {viewMode === 'lines' && renderLinesChart()}
-              {viewMode === 'stacked' && renderStackedChart()}
+              {viewMode === 'leucocytes' && (
+                <div ref={leucocytesChartRef}>
+                  {renderLeucocytesChart()}
+                </div>
+              )}
+              {viewMode === 'lines' && (
+                <div ref={linesChartRef}>
+                  {renderLinesChart()}
+                </div>
+              )}
+              {viewMode === 'stacked' && (
+                <div ref={stackedChartRef}>
+                  {renderStackedChart()}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -458,100 +419,170 @@ const LeukocytesApp = () => {
           </div>
         </div>
 
-        <button onClick={() => setShowTable(!showTable)} className="mb-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-md">
-          {showTable ? 'Masquer' : 'Afficher'} le tableau de saisie
-        </button>
+        {/* Tableau des données en lecture seule */}
+        {showTable && data.length > 0 && (() => {
+          const totalPages = Math.ceil(data.length / itemsPerPage);
+          const startIndex = (currentPage - 1) * itemsPerPage;
+          const endIndex = startIndex + itemsPerPage;
+          const currentData = data.slice(startIndex, endIndex);
 
-        {showTable && (
-          <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Saisir vos données</h2>
-            <p className="text-sm text-gray-600 mb-4">💡 <strong>Note:</strong> Toutes les valeurs sont en cellules/mm³ (ex: 7500 pour les leucocytes)</p>
-            
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
-              <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Année</label>
-                <input type="number" placeholder="2025" value={newEntry.annee} onChange={(e) => setNewEntry({...newEntry, annee: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1997" max="2100" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Mois</label>
-                <select value={newEntry.mois} onChange={(e) => setNewEntry({...newEntry, mois: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="">--</option>
-                  <option value="1">Janvier</option>
-                  <option value="2">Février</option>
-                  <option value="3">Mars</option>
-                  <option value="4">Avril</option>
-                  <option value="5">Mai</option>
-                  <option value="6">Juin</option>
-                  <option value="7">Juillet</option>
-                  <option value="8">Août</option>
-                  <option value="9">Septembre</option>
-                  <option value="10">Octobre</option>
-                  <option value="11">Novembre</option>
-                  <option value="12">Décembre</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Leucocytes (/mm³)</label>
-                <input type="number" placeholder="7500" value={newEntry.leucocytes} onChange={(e) => setNewEntry({...newEntry, leucocytes: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Neutrophiles (/mm³)</label>
-                <input type="number" placeholder="4200" value={newEntry.neutrophiles} onChange={(e) => setNewEntry({...newEntry, neutrophiles: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Éosinophiles (/mm³)</label>
-                <input type="number" placeholder="180" value={newEntry.eosinophiles} onChange={(e) => setNewEntry({...newEntry, eosinophiles: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1 text-gray-700">Lymphocytes (/mm³)</label>
-                <input type="number" placeholder="2100" value={newEntry.lymphocytes} onChange={(e) => setNewEntry({...newEntry, lymphocytes: e.target.value})} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-            </div>
-            
-            <button onClick={addEntry} disabled={submitting} className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-md disabled:opacity-50 mb-4">
-              {submitting ? <><RefreshCw className="w-5 h-5 animate-spin" />Ajout en cours...</> : <><Plus size={18} />Ajouter</>}
-            </button>
-
-            {data.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead className="bg-indigo-600 text-white">
+          return (
+            <div className="mt-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">
+                Tableau des mesures ({data.length} mesure{data.length > 1 ? 's' : ''})
+              </h3>
+              <div className="overflow-x-auto bg-white rounded-lg shadow">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left">Date</th>
-                      <th className="px-4 py-3 text-left">Leucocytes</th>
-                      <th className="px-4 py-3 text-left">Neutrophiles</th>
-                      <th className="px-4 py-3 text-left">Éosinophiles</th>
-                      <th className="px-4 py-3 text-left">Lymphocytes</th>
-                      <th className="px-4 py-3 text-center">Action</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leucocytes</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Neutrophiles</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Éosinophiles</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lymphocytes</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {data.map((entry, index) => {
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentData.map((entry, index) => {
                       const moisNom = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][entry.mois - 1];
                       return (
-                      <tr key={entry.id} className="border-b hover:bg-indigo-50 transition">
-                        <td className="px-4 py-3 font-semibold">{moisNom} {entry.annee}</td>
-                        <td className="px-4 py-3">{entry.leucocytes.toLocaleString()}</td>
-                        <td className="px-4 py-3">{entry.neutrophiles.toLocaleString()}</td>
-                        <td className="px-4 py-3">{entry.eosinophiles.toLocaleString()}</td>
-                        <td className="px-4 py-3">{entry.lymphocytes.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-center">
-                          <button onClick={() => deleteEntry(entry.id, entry.annee, entry.mois)} className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {moisNom} {entry.annee}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {entry.leucocytes.toLocaleString()} /mm³
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {entry.neutrophiles.toLocaleString()} /mm³
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {entry.eosinophiles.toLocaleString()} /mm³
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {entry.lymphocytes.toLocaleString()} /mm³
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow">
+                  <div className="flex-1 flex justify-between sm:hidden">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Précédent
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Affichage de <span className="font-medium">{startIndex + 1}</span> à{' '}
+                        <span className="font-medium">{Math.min(endIndex, data.length)}</span> sur{' '}
+                        <span className="font-medium">{data.length}</span> résultats
+                      </p>
+                    </div>
+                    <div>
+                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        {[...Array(totalPages)].map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(i + 1)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              currentPage === i + 1
+                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       </div>
     </div>
   );
 };
 
-export default LeukocytesApp;
+// Wrapper avec authentification
+const AppWithAuth = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  // Afficher un écran de chargement pendant la vérification de l'authentification
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-16 h-16 text-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-xl text-gray-700">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Afficher Login si non authentifié, sinon afficher le router
+  if (!isAuthenticated()) {
+    return <Login />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<LeukocytesApp />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/share/:token" element={<SharedDashboard />} />
+    </Routes>
+  );
+};
+
+// Export avec AuthProvider et Router
+const App = () => {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Route publique pour les liens de partage */}
+          <Route path="/share/:token" element={<SharedDashboard />} />
+          {/* Routes protégées */}
+          <Route path="/*" element={<AppWithAuth />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+};
+
+export default App;
