@@ -10,7 +10,12 @@ services:
       - NODE_ENV=production
       - PORT=8081
       - DATABASE_URL=/app/data/leucocytes.db
-      - CORS_ORIGINS=http://localhost:3000,http://localhost
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      # Secrets obligatoires : définis dans un fichier .env à la racine (voir .env.example)
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      - ADMIN_PIN=${ADMIN_PIN:-}
     volumes:
       - backend-data:/app/data
     networks:

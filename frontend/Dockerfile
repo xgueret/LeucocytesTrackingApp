@@ -1,7 +1,7 @@
 # Frontend Dockerfile - Multi-stage build
 
 # Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:18.20-alpine AS builder
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -21,7 +21,7 @@ COPY . .
 RUN pnpm build
 
 # Stage 2: Production
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -30,15 +30,10 @@ export async function fetchWithAuth(url, options = {}) {
     headers,
   });
 
-  // Si la réponse est 401 (Non autorisé), déconnecter l'utilisateur
+  // Si la réponse est 401 (Non autorisé), notifier le contexte d'authentification
+  // qui se chargera de déconnecter proprement sans recharger la page.
   if (response.status === 401) {
-    // Nettoyer le localStorage
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('username');
-
-    // Recharger la page pour afficher l'écran de connexion
-    // Alternative: vous pouvez émettre un événement ou utiliser un contexte pour gérer ça plus proprement
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
   }
 
   return response;

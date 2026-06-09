@@ -1,17 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, X, AlertCircle } from 'lucide-react';
+import { fetchWithAuth } from '../utils/api';
 
 const PinModal = ({ isOpen, onSuccess, onCancel }) => {
   const [pin, setPin] = useState('');
   const [attempts, setAttempts] = useState(3);
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const inputRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Nettoyage du timer si le composant est démonté avant la fin
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handlePinChange = (e) => {
     const value = e.target.value.replace(/\D/g, ''); // Seulement des chiffres
@@ -21,7 +33,7 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (pin.length !== 4) {
@@ -29,23 +41,36 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
       return;
     }
 
-    // Récupérer le code PIN stocké (défaut: "1234")
-    const storedPin = localStorage.getItem('adminPinCode') || '1234';
+    setVerifying(true);
 
-    if (pin === storedPin) {
-      // Succès
-      setPin('');
-      setError('');
-      setAttempts(3);
-      onSuccess();
-    } else {
-      // Échec
+    try {
+      // Vérification côté serveur (le serveur applique aussi un rate limiting)
+      const response = await fetchWithAuth('/api/admin/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      if (response.ok) {
+        setPin('');
+        setError('');
+        setAttempts(3);
+        onSuccess();
+        return;
+      }
+
+      if (response.status === 429) {
+        setError('Trop de tentatives. Réessayez dans quelques minutes.');
+        setPin('');
+        return;
+      }
+
       const remainingAttempts = attempts - 1;
       setAttempts(remainingAttempts);
 
-      if (remainingAttempts === 0) {
+      if (remainingAttempts <= 0) {
         setError('3 tentatives échouées. Redirection...');
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           setPin('');
           setAttempts(3);
           setError('');
@@ -55,6 +80,10 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
         setError(`Code incorrect. Il vous reste ${remainingAttempts} tentative${remainingAttempts > 1 ? 's' : ''}`);
         setPin('');
       }
+    } catch (err) {
+      setError('Erreur de vérification. Veuillez réessayer.');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -68,7 +97,12 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pin-modal-title"
+    >
       <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 animate-fadeIn">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -76,12 +110,13 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
             <div className="p-3 bg-indigo-100 rounded-full">
               <Shield className="w-6 h-6 text-indigo-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800">Accès Administration</h2>
+            <h2 id="pin-modal-title" className="text-2xl font-bold text-gray-800">Accès Administration</h2>
           </div>
           <button
             onClick={handleCancel}
             className="text-gray-400 hover:text-gray-600 transition"
             title="Annuler"
+            aria-label="Annuler"
           >
             <X className="w-6 h-6" />
           </button>
@@ -110,6 +145,7 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-center text-2xl tracking-widest font-bold"
               maxLength={4}
               autoComplete="off"
+              disabled={verifying}
             />
             {/* Indicateur visuel des chiffres saisis */}
             <div className="flex justify-center gap-2 mt-3">
@@ -159,18 +195,13 @@ const PinModal = ({ isOpen, onSuccess, onCancel }) => {
             </button>
             <button
               type="submit"
-              disabled={pin.length !== 4}
+              disabled={pin.length !== 4 || verifying}
               className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Valider
+              {verifying ? 'Vérification...' : 'Valider'}
             </button>
           </div>
         </form>
-
-        {/* Info */}
-        <p className="mt-6 text-xs text-gray-500 text-center">
-          Code par défaut : 1234
-        </p>
       </div>
     </div>
   );

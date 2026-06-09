@@ -20,6 +20,19 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // Déconnexion automatique quand une requête API renvoie 401 (token expiré/invalide)
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('username');
+      setToken(null);
+      setUsername(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
   // Fonction de connexion
   const login = async (username, password) => {
     try {
