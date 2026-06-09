@@ -7,27 +7,52 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "user:create": "tsx src/manage-users.ts create",
+    "user:list": "tsx src/manage-users.ts list",
+    "user:delete": "tsx src/manage-users.ts delete",
+    "user:exists": "tsx src/manage-users.ts exists"
   },
-  "keywords": ["leucocytes", "api", "health", "tracking"],
+  "keywords": [
+    "leucocytes",
+    "api",
+    "health",
+    "tracking"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.3",
+    "jsonwebtoken": "^9.0.2",
     "swagger-ui-express": "^5.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.9",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.20",
+    "@types/supertest": "^6.0.2",
     "@types/swagger-ui-express": "^4.1.6",
+    "node-gyp": "^12.4.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.7.1",
     "typescript": "^5.3.3",
-    "tsx": "^4.7.1"
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
   }
 }

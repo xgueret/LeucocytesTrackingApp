@@ -2,36 +2,40 @@
 # Build multi-stage pour optimiser la taille de l'image
 
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:20.18-alpine AS builder
+
+# Outils nécessaires à la compilation native de better-sqlite3
+RUN apk add --no-cache python3 make g++
+
+# Activer pnpm via corepack
+RUN corepack enable
 
 WORKDIR /app
 
 # Copier les fichiers de dépendances
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY package.json pnpm-lock.yaml tsconfig.json ./
 
-# Installer les dépendances (incluant devDependencies pour le build)
-RUN npm ci
+# Installer toutes les dépendances (build natif inclus via onlyBuiltDependencies)
+RUN pnpm install --frozen-lockfile
 
-# Copier le code source
+# Copier le code source et compiler TypeScript
 COPY src ./src
+RUN pnpm build
 
-# Compiler TypeScript
-RUN npm run build
+# Réduire node_modules aux dépendances de production (conserve le binaire natif compilé)
+RUN pnpm prune --prod
 
 # Stage 2: Production
-FROM node:20-alpine
+FROM node:20.18-alpine
 
 WORKDIR /app
 
 # Installer curl et su-exec pour le health check et la gestion des permissions
 RUN apk add --no-cache curl su-exec
 
-# Copier uniquement les fichiers nécessaires pour la production
-COPY package*.json ./
-
-# Installer uniquement les dépendances de production
-RUN npm ci --only=production
+# Copier les dépendances de production déjà installées et compilées
+COPY package.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copier le code compilé depuis le stage builder
 COPY --from=builder /app/dist ./dist

@@ -22,9 +22,19 @@ logs/
 **/*.backup
 **/*.dump
 
-# Environment files
+# Environment files (mais on garde les modèles .env.example)
 **/.env
 **/.env.*
+!**/.env.example
+
+# ============================================
+# DÉPENDANCES (Node.js)
+# ============================================
+
+node_modules/
+**/node_modules/
+.npm
+.pnpm-store/
 
 # ============================================
 # ÉDITEURS ET IDEs
