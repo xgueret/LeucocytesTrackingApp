@@ -15,7 +15,6 @@ services:
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
       - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME is required}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
-      - ADMIN_PIN=${ADMIN_PIN:-}
     volumes:
       - backend-data:/app/data
     networks:

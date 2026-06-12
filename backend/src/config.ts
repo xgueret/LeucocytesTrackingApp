@@ -27,5 +27,4 @@ export const config = {
   ],
   adminUsername: process.env.ADMIN_USERNAME || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
-  adminPin: process.env.ADMIN_PIN || '',
 };

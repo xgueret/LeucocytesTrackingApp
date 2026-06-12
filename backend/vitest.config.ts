@@ -8,7 +8,6 @@ export default defineConfig({
       SECRET_KEY: 'test-secret-key-for-vitest',
       ADMIN_USERNAME: 'admin',
       ADMIN_PASSWORD: 'TestAdmin123!',
-      ADMIN_PIN: '4242',
       NODE_ENV: 'test',
     },
   },

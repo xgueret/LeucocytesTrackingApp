@@ -69,22 +69,15 @@ describe('API', () => {
     expect(res.status).toBe(400);
   });
 
-  it('RBAC : un utilisateur normal est interdit sur /api/admin/users', async () => {
+  it('tout utilisateur authentifié accède à /api/admin/users', async () => {
     const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${userToken}`);
-    expect(res.status).toBe(403);
-  });
-
-  it('RBAC : un admin accède à /api/admin/users', async () => {
-    const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('vérifie le PIN admin côté serveur', async () => {
-    const ok = await request(app).post('/api/admin/verify-pin').set('Authorization', `Bearer ${adminToken}`).send({ pin: '4242' });
-    expect(ok.status).toBe(200);
-    const ko = await request(app).post('/api/admin/verify-pin').set('Authorization', `Bearer ${adminToken}`).send({ pin: '0000' });
-    expect(ko.status).toBe(401);
+  it('refuse /api/admin/users sans authentification', async () => {
+    const res = await request(app).get('/api/admin/users');
+    expect(res.status).toBe(401);
   });
 
   it('calcule les statistiques', async () => {
@@ -102,8 +95,13 @@ describe('API', () => {
     expect(pub.body.length).toBe(1);
   });
 
-  it('interdit la création de lien de partage à un utilisateur normal', async () => {
+  it('autorise un utilisateur authentifié à créer un lien de partage', async () => {
     const res = await request(app).post('/api/share-links').set('Authorization', `Bearer ${userToken}`).send({ hours: 1 });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(201);
+  });
+
+  it('refuse la création de lien de partage sans authentification', async () => {
+    const res = await request(app).post('/api/share-links').send({ hours: 1 });
+    expect(res.status).toBe(401);
   });
 });
