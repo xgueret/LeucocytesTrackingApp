@@ -1,41 +1,18 @@
 import { Router, Request, Response } from 'express';
 import Database from 'better-sqlite3';
-import { requireAuth, requireAdmin, createUser, userExists, getAllUsers, deleteUser } from '../auth';
-import { rateLimit } from '../rate-limit';
+import { requireAuth, createUser, userExists, getAllUsers, deleteUser } from '../auth';
 import { config } from '../config';
 
-const pinLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: 'Trop de tentatives de code PIN. Réessayez dans quelques minutes.',
-});
-
 /**
- * Routes d'administration, montées sous /api/admin. Réservées aux admins.
+ * Routes d'administration, montées sous /api/admin.
+ * Accessibles à tout utilisateur authentifié ; la restriction par rôle
+ * sera réintroduite dans une prochaine feature.
  */
 export function adminRouter(db: Database.Database): Router {
   const router = Router();
 
-  // POST /verify-pin - Vérifie le code PIN admin côté serveur
-  router.post('/verify-pin', pinLimiter, requireAuth, requireAdmin, (req: Request, res: Response) => {
-    const { pin } = req.body;
-
-    if (!config.adminPin) {
-      return res.status(503).json({
-        error: 'PIN non configuré',
-        detail: 'Aucun code PIN admin n\'est configuré sur le serveur (ADMIN_PIN).',
-      });
-    }
-
-    if (typeof pin !== 'string' || pin !== config.adminPin) {
-      return res.status(401).json({ error: 'Code PIN incorrect' });
-    }
-
-    res.json({ valid: true });
-  });
-
   // GET /users - Liste tous les utilisateurs
-  router.get('/users', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  router.get('/users', requireAuth, (req: Request, res: Response) => {
     try {
       res.json(getAllUsers());
     } catch (error) {
@@ -45,7 +22,7 @@ export function adminRouter(db: Database.Database): Router {
   });
 
   // POST /users - Crée un nouvel utilisateur
-  router.post('/users', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/users', requireAuth, async (req: Request, res: Response) => {
     try {
       const { username, password, role } = req.body;
 
@@ -84,7 +61,7 @@ export function adminRouter(db: Database.Database): Router {
   });
 
   // DELETE /users/:username - Supprime un utilisateur
-  router.delete('/users/:username', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  router.delete('/users/:username', requireAuth, (req: Request, res: Response) => {
     try {
       const { username } = req.params;
 

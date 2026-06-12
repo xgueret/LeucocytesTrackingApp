@@ -1,18 +1,18 @@
 import { Router, Request, Response } from 'express';
 import Database from 'better-sqlite3';
 import crypto from 'crypto';
-import { requireAuth, requireAdmin, AuthenticatedRequest } from '../auth';
+import { requireAuth, AuthenticatedRequest } from '../auth';
 
 /**
  * Routes des liens de partage éphémères, montées sous /api.
- * La gestion (création/liste/révocation) est réservée aux admins ;
+ * La gestion (création/liste/révocation) requiert un utilisateur authentifié ;
  * l'accès aux données partagées est public via le token.
  */
 export function shareRouter(db: Database.Database): Router {
   const router = Router();
 
   // POST /share-links - Génère un lien éphémère (admin)
-  router.post('/share-links', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  router.post('/share-links', requireAuth, (req: Request, res: Response) => {
     try {
       const { hours = 24 } = req.body;
       const username = (req as AuthenticatedRequest).user?.username || 'unknown';
@@ -43,7 +43,7 @@ export function shareRouter(db: Database.Database): Router {
   });
 
   // GET /share-links - Liste tous les liens actifs (admin)
-  router.get('/share-links', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  router.get('/share-links', requireAuth, (req: Request, res: Response) => {
     try {
       const now = new Date().toISOString();
 
@@ -68,7 +68,7 @@ export function shareRouter(db: Database.Database): Router {
   });
 
   // DELETE /share-links/:token - Révoque un lien (admin)
-  router.delete('/share-links/:token', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  router.delete('/share-links/:token', requireAuth, (req: Request, res: Response) => {
     try {
       const { token } = req.params;
       const result = db.prepare('DELETE FROM share_links WHERE token = ?').run(token);

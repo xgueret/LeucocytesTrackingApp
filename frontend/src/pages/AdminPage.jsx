@@ -3,15 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Settings, Upload, Download, FileText, Trash2, AlertCircle, CheckCircle, Plus, ChevronLeft, ChevronRight, Share2, Copy, Clock, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import PinModal from '../components/PinModal';
 import { fetchWithAuth } from '../utils/api';
 
 const API_BASE_URL = '/api';
 
 const AdminPage = () => {
   const navigate = useNavigate();
-  const [isPinModalOpen, setIsPinModalOpen] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -36,30 +33,10 @@ const AdminPage = () => {
   const [shareDuration, setShareDuration] = useState(24);
   const [generatedLink, setGeneratedLink] = useState(null);
 
-  // Afficher le modal de PIN au chargement de la page
+  // L'accès est déjà protégé par l'authentification globale (cf. App.jsx).
   useEffect(() => {
-    setIsPinModalOpen(true);
-    setIsAuthenticated(false);
+    fetchData();
   }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    }
-  }, [isAuthenticated]);
-
-  const handlePinSuccess = () => {
-    setIsPinModalOpen(false);
-    setIsAuthenticated(true);
-  };
-
-  const handlePinCancel = (errorMessage) => {
-    setIsPinModalOpen(false);
-    if (errorMessage) {
-      alert(errorMessage);
-    }
-    navigate('/');
-  };
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
@@ -476,17 +453,6 @@ const AdminPage = () => {
       setLoading(false);
     }
   };
-
-  // Ne rien afficher tant que l'utilisateur n'est pas authentifié
-  if (!isAuthenticated) {
-    return (
-      <PinModal
-        isOpen={isPinModalOpen}
-        onSuccess={handlePinSuccess}
-        onCancel={handlePinCancel}
-      />
-    );
-  }
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
